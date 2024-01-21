@@ -9,10 +9,9 @@ import (
 )
 
 var (
-	Version      string
-	CommitSHA    string
-	quietFlag    bool
-	parallelFlag int
+	Version   string
+	CommitSHA string
+	quietFlag bool
 
 	rootCmd = &cobra.Command{
 		Use:           "gyz [<file|dir>]",
@@ -27,7 +26,7 @@ var (
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// NOTE: デフォルトをアップロードにする。この呼び出し方だと、 `upload` 側のPre/PostRunが呼び出されないので注意
-			return uploadCommandHandler(cmd, args, parallelFlag)
+			return uploadCommandHandler(cmd, args)
 		},
 	}
 
@@ -41,15 +40,36 @@ var (
 		},
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return uploadCommandHandler(cmd, args, parallelFlag)
+			return uploadCommandHandler(cmd, args)
 		},
 	}
 )
 
-func init() {
+func setFlags() {
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "quiet do not log messages")
-	rootCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 5, "number of parallel uploads")
-	uploadCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 5, "number of parallel uploads")
+
+	// NOTE: rootCmdをuploadCmdと同じ挙動にしたいので両方に登録している。他のサブコマンドでは利用したくないのでLocal Flagsにしている
+	rootCmd.Flags().IntP("parallel", "p", 5, "number of parallel uploads")
+	uploadCmd.Flags().IntP("parallel", "p", 5, "number of parallel uploads")
+
+	rootCmd.Flags().BoolP("interactive", "i", false, "interactive mode")
+	uploadCmd.Flags().BoolP("interactive", "i", false, "interactive mode")
+
+	rootCmd.Flags().String("desc", "", "description")
+	uploadCmd.Flags().String("desc", "", "description")
+
+	rootCmd.Flags().String("app", "", "app")
+	uploadCmd.Flags().String("app", "", "app")
+
+	rootCmd.Flags().String("access-policy", "", "access policy")
+	uploadCmd.Flags().String("access-policy", "", "access policy")
+
+	rootCmd.Flags().Bool("metadata-is-public", false, "metadata is public")
+	uploadCmd.Flags().Bool("metadata-is-public", false, "metadata is public")
+}
+
+func init() {
+	setFlags()
 	rootCmd.AddCommand(
 		uploadCmd,
 	)

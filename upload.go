@@ -11,10 +11,38 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 	"github.com/upamune/gyz/internal/gyazo"
 )
 
-func buildGyazoUploadOption() (gyazo.UploadOption, error) {
+func buildGyazoUploadOptionWithFlags(flags *flag.FlagSet) (gyazo.UploadOption, error) {
+	desc, err := flags.GetString("desc")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+	app, err := flags.GetString("app")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+	accessPolicy, err := flags.GetString("access-policy")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+	metadataIsPublic, err := flags.GetBool("metadata-is-public")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+
+	return gyazo.UploadOption{
+		App:              app,
+		Desc:             desc,
+		AccessPolicy:     accessPolicy,
+		MetadataIsPublic: metadataIsPublic,
+	}, nil
+
+}
+
+func buildGyazoUploadOptionWithInteractive() (gyazo.UploadOption, error) {
 	var (
 		accessPolicy     = "anyone"
 		app              = "gyz"
@@ -51,11 +79,40 @@ func buildGyazoUploadOption() (gyazo.UploadOption, error) {
 	}, nil
 }
 
-func uploadCommandHandler(cmd *cobra.Command, args []string, parallel int) error {
-	option, err := buildGyazoUploadOption()
+func buildGyazoUploadOption(flags *flag.FlagSet) (gyazo.UploadOption, error) {
+	interactive, err := flags.GetBool("interactive")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+
+	if interactive {
+		opt, err := buildGyazoUploadOptionWithInteractive()
+		if err != nil {
+			return gyazo.UploadOption{}, errors.WithStack(err)
+		}
+		return opt, nil
+	}
+
+	opt, err := buildGyazoUploadOptionWithFlags(flags)
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
+	return opt, nil
+}
+
+func uploadCommandHandler(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+
+	parallel, err := flags.GetInt("parallel")
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	option, err := buildGyazoUploadOption(flags)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	p := pool.New().WithErrors().WithContext(cmd.Context()).WithMaxGoroutines(parallel)
 	for _, arg := range args {
 		arg := arg
