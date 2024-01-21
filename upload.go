@@ -51,12 +51,12 @@ func buildGyazoUploadOption() (gyazo.UploadOption, error) {
 	}, nil
 }
 
-func uploadCommandHandler(cmd *cobra.Command, args []string) error {
+func uploadCommandHandler(cmd *cobra.Command, args []string, parallel int) error {
 	option, err := buildGyazoUploadOption()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	p := pool.New().WithErrors().WithContext(cmd.Context()).WithMaxGoroutines(5)
+	p := pool.New().WithErrors().WithContext(cmd.Context()).WithMaxGoroutines(parallel)
 	for _, arg := range args {
 		arg := arg
 		p.Go(func(ctx context.Context) error {

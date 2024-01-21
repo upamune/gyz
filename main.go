@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	Version   string
-	CommitSHA string
-	quietFlag bool
+	Version      string
+	CommitSHA    string
+	quietFlag    bool
+	parallelFlag int
 
 	rootCmd = &cobra.Command{
 		Use:           "gyz [<file|dir>]",
@@ -26,7 +27,7 @@ var (
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// NOTE: デフォルトをアップロードにする。この呼び出し方だと、 `upload` 側のPre/PostRunが呼び出されないので注意
-			return uploadCommandHandler(cmd, args)
+			return uploadCommandHandler(cmd, args, parallelFlag)
 		},
 	}
 
@@ -40,13 +41,15 @@ var (
 		},
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return uploadCommandHandler(cmd, args)
+			return uploadCommandHandler(cmd, args, parallelFlag)
 		},
 	}
 )
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&quietFlag, "quiet", "q", false, "quiet do not log messages")
+	rootCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 5, "number of parallel uploads")
+	uploadCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 5, "number of parallel uploads")
 	rootCmd.AddCommand(
 		uploadCmd,
 	)
