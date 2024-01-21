@@ -2,11 +2,16 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 # Binaries for programs and plugins
+gyz
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.jpeg
+*.jpg
+*.png
+*.gif
 
 # Test binary, built with `go test -c`
 *.test
@@ -16,6 +21,8 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+.envrc
 
 # Go workspace file
 go.work
