@@ -21,8 +21,7 @@ gyz
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
+dist/
 .envrc
-
 # Go workspace file
 go.work
