@@ -48,6 +48,8 @@ brews:
       owner: upamune
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/upamune/gyz"
+    description: "gyz is a CLI tool for uploading images to Gyazo"
 
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
