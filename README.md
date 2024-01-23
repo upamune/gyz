@@ -10,6 +10,12 @@
   </b>
 </h3 >
 
+## Install
+
+```bash
+$ brew install upamune/tap/gyz
+```
+
 ## Configuration
 
 ```bash

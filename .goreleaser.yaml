@@ -43,5 +43,11 @@ changelog:
       - '^docs:'
       - '^test:'
 
+brews:
+  - repository:
+      owner: upamune
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
