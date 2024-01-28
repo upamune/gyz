@@ -64,7 +64,7 @@ func buildGyazoUploadOptionWithInteractive() (gyazo.UploadOption, error) {
 				Options(huh.NewOptions(true, false)...).
 				Value(&metadataIsPublic),
 			huh.NewInput().Title("App").Description("キャプチャをしたアプリケーション名").Value(&app),
-			huh.NewInput().Title("Description").Description("任意のコメント").Value(&desc),
+			huh.NewInput().Title("Description").Description("任意のコメント・タグ").Value(&desc),
 		),
 	)
 
@@ -101,6 +101,33 @@ func buildGyazoUploadOption(flags *flag.FlagSet) (gyazo.UploadOption, error) {
 	return opt, nil
 }
 
+func listTargetFilePaths(targets []string) ([]string, error) {
+	var targetFilePaths []string
+
+	for _, target := range targets {
+		target := target
+		info, err := os.Stat(target)
+		if err != nil {
+			log.Warn("skip file because of stat error", "err", err, "filepath", target)
+			continue
+		}
+
+		if info.IsDir() {
+			files, err := scandir(target)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+			targetFilePaths = append(targetFilePaths, files...)
+		}
+
+		if isSupportedImageFile(info.Name()) {
+			targetFilePaths = append(targetFilePaths, target)
+		}
+	}
+
+	return targetFilePaths, nil
+}
+
 func uploadCommandHandler(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
@@ -114,23 +141,19 @@ func uploadCommandHandler(cmd *cobra.Command, args []string) error {
 		return errors.WithStack(err)
 	}
 
+	targetFilePaths, err := listTargetFilePaths(args)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
 	p := pool.New().WithErrors().WithContext(cmd.Context()).WithMaxGoroutines(parallel)
-	for _, arg := range args {
-		arg := arg
+	for _, path := range targetFilePaths {
+		path := path
 		p.Go(func(ctx context.Context) error {
-			info, err := os.Stat(arg)
-			if err != nil {
-				log.Warn("skip file because of stat error", "err", err, "filepath", arg)
-				return nil
-			}
-
-			if info.IsDir() {
-				return errors.WithStack(scandir(arg, option))
-			}
-
-			return errors.WithStack(scanfile(arg, info.Name(), option))
+			return upload(path, option)
 		})
 	}
+
 	return errors.WithStack(p.Wait())
 }
 
@@ -143,21 +166,20 @@ func isSupportedImageFile(filename string) bool {
 	}
 }
 
-func scandir(dir string, option gyazo.UploadOption) error {
-	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+func scandir(dir string) ([]string, error) {
+	var targetFilePaths []string
+	if err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
-		return errors.WithStack(scanfile(path, d.Name(), option))
-	})
-}
-
-func scanfile(filePath string, filename string, option gyazo.UploadOption) error {
-	if !isSupportedImageFile(filename) {
-		log.Warn("skip file because of unsupported file type", "filepath", filePath)
+		if isSupportedImageFile(path) {
+			targetFilePaths = append(targetFilePaths, path)
+		}
 		return nil
+	}); err != nil {
+		return nil, errors.WithStack(err)
 	}
-	return errors.WithStack(upload(filePath, option))
+	return targetFilePaths, nil
 }
 
 func upload(filePath string, option gyazo.UploadOption) error {
