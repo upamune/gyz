@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,7 +128,7 @@ func uploadCommandHandler(cmd *cobra.Command, args []string) error {
 				return errors.WithStack(scandir(arg, option))
 			}
 
-			return errors.WithStack(scanfile(arg, info, option))
+			return errors.WithStack(scanfile(arg, info.Name(), option))
 		})
 	}
 	return errors.WithStack(p.Wait())
@@ -143,16 +144,16 @@ func isSupportedImageFile(filename string) bool {
 }
 
 func scandir(dir string, option gyazo.UploadOption) error {
-	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return errors.WithStack(scandir(path, option))
+	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if d.IsDir() {
+			return nil
 		}
-		return errors.WithStack(scanfile(path, info, option))
+		return errors.WithStack(scanfile(path, d.Name(), option))
 	})
 }
 
-func scanfile(filePath string, info os.FileInfo, option gyazo.UploadOption) error {
-	if !isSupportedImageFile(info.Name()) {
+func scanfile(filePath string, filename string, option gyazo.UploadOption) error {
+	if !isSupportedImageFile(filename) {
 		log.Warn("skip file because of unsupported file type", "filepath", filePath)
 		return nil
 	}

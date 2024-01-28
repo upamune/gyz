@@ -17,6 +17,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const AccessTokenEnvName = "GYAZO_ACCESS_TOKEN"
+
 var (
 	once          sync.Once
 	defaultClient *Client
@@ -32,7 +34,7 @@ func DefaultClient() *Client {
 			context.TODO(),
 			oauth2.StaticTokenSource(&oauth2.Token{
 				// TODO: 環境変数以外から取得する
-				AccessToken: os.Getenv("GYAZO_ACCESS_TOKEN"),
+				AccessToken: os.Getenv(AccessTokenEnvName),
 			}),
 		)
 		defaultClient = &Client{

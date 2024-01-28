@@ -2,10 +2,12 @@ package main
 
 import (
 	"io"
+	"os"
 	"runtime/debug"
 
 	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
+	"github.com/upamune/gyz/internal/gyazo"
 )
 
 var (
@@ -90,7 +92,17 @@ func init() {
 }
 
 func main() {
+	os.Exit(realMain())
+}
+
+func realMain() int {
+	if os.Getenv(gyazo.AccessTokenEnvName) == "" {
+		log.Errorf("environment variable %s is not set", gyazo.AccessTokenEnvName)
+		return 1
+	}
 	if err := rootCmd.Execute(); err != nil {
 		log.Error(err)
+		return 1
 	}
+	return 0
 }
