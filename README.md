@@ -10,6 +10,10 @@
   </b>
 </h3 >
 
+## Demo
+
+![demo](https://i.gyazo.com/5e3056bffd076597a5e12c1843abf5db.gif)
+
 ## Install
 
 ```bash
