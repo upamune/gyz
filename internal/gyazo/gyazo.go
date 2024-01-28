@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charmbracelet/log"
 	"github.com/cockroachdb/errors"
 	"golang.org/x/oauth2"
 )
@@ -57,7 +56,7 @@ type UploadOption struct {
 
 type uploadResponse struct {
 	ImageID      string `json:"image_id"`
-	PermalinkURL any    `json:"permalink_url"`
+	PermalinkURL string `json:"permalink_url"`
 	ThumbURL     any    `json:"thumb_url"`
 	Type         string `json:"type"`
 	Metadata     struct {
@@ -105,59 +104,56 @@ func (option UploadOption) toMap() map[string]string {
 	return m
 }
 
-func (c *Client) Upload(filePath string, option UploadOption) error {
+func (c *Client) Upload(filePath string, option UploadOption) (string, error) {
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 	defer file.Close()
 
 	part, err := writer.CreateFormFile("imagedata", file.Name())
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 	if _, err := io.Copy(part, file); err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	for k, v := range option.toMap() {
 		if err := writer.WriteField(k, v); err != nil {
-			return errors.WithStack(err)
+			return "", errors.WithStack(err)
 		}
 	}
 
 	if err := writer.Close(); err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	log.Info("🔃 uploading", "file", filePath)
 	const url = "https://upload.gyazo.com/api/upload"
 
 	req, err := http.NewRequest("POST", url, &requestBody)
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
 	var resp uploadResponse
 	if err := json.NewDecoder(res.Body).Decode(&resp); err != nil {
-		return errors.WithStack(err)
+		return "", errors.WithStack(err)
 	}
 
-	log.Info("✅ uploaded", "file", filePath, "url", resp.PermalinkURL)
-
-	return nil
+	return resp.PermalinkURL, nil
 }

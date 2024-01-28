@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -9,6 +10,9 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/log"
+	"github.com/chelnak/ysmrr"
+	"github.com/chelnak/ysmrr/pkg/animations"
+	"github.com/chelnak/ysmrr/pkg/colors"
 	"github.com/cockroachdb/errors"
 	"github.com/sourcegraph/conc/pool"
 	"github.com/spf13/cobra"
@@ -146,11 +150,27 @@ func uploadCommandHandler(cmd *cobra.Command, args []string) error {
 		return errors.WithStack(err)
 	}
 
+	sm := ysmrr.NewSpinnerManager(
+		ysmrr.WithAnimation(animations.Point),
+		ysmrr.WithSpinnerColor(colors.FgHiBlue),
+	)
+	defer sm.Stop()
+	sm.Start()
+
 	p := pool.New().WithErrors().WithContext(cmd.Context()).WithMaxGoroutines(parallel)
 	for _, path := range targetFilePaths {
 		path := path
 		p.Go(func(ctx context.Context) error {
-			return upload(path, option)
+			s := sm.AddSpinner(fmt.Sprintf("uploading %s", path))
+			url, err := upload(path, option)
+			if err != nil {
+				s.UpdateMessagef("failed to upload(%s): %s", path, err)
+				s.Error()
+				return errors.WithStack(err)
+			}
+			s.UpdateMessagef("uploaded! %s -> %s", path, url)
+			s.Complete()
+			return nil
 		})
 	}
 
@@ -182,6 +202,10 @@ func scandir(dir string) ([]string, error) {
 	return targetFilePaths, nil
 }
 
-func upload(filePath string, option gyazo.UploadOption) error {
-	return errors.WithStack(gyazo.DefaultClient().Upload(filePath, option))
+func upload(filePath string, option gyazo.UploadOption) (string, error) {
+	url, err := gyazo.DefaultClient().Upload(filePath, option)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return url, nil
 }
