@@ -37,12 +37,17 @@ func buildGyazoUploadOptionWithFlags(flags *flag.FlagSet) (gyazo.UploadOption, e
 	if err != nil {
 		return gyazo.UploadOption{}, errors.WithStack(err)
 	}
+	exif, err := flags.GetBool("exif")
+	if err != nil {
+		return gyazo.UploadOption{}, errors.WithStack(err)
+	}
 
 	return gyazo.UploadOption{
 		App:              app,
 		Desc:             desc,
 		AccessPolicy:     accessPolicy,
 		MetadataIsPublic: metadataIsPublic,
+		EnableExif:       exif,
 	}, nil
 
 }
@@ -52,6 +57,7 @@ func buildGyazoUploadOptionWithInteractive() (gyazo.UploadOption, error) {
 		accessPolicy     = "anyone"
 		app              = "gyz"
 		metadataIsPublic bool
+		exif             bool
 		desc             string
 	)
 
@@ -67,6 +73,11 @@ func buildGyazoUploadOptionWithInteractive() (gyazo.UploadOption, error) {
 				Description("URLやタイトルなどのメタデータを公開するか否か").
 				Options(huh.NewOptions(true, false)...).
 				Value(&metadataIsPublic),
+			huh.NewSelect[bool]().
+				Title("Exif").
+				Description("EXIF情報を使うか否か").
+				Options(huh.NewOptions(true, false)...).
+				Value(&exif),
 			huh.NewInput().Title("App").Description("キャプチャをしたアプリケーション名").Value(&app),
 			huh.NewInput().Title("Description").Description("任意のコメント・タグ").Value(&desc),
 		),
@@ -81,6 +92,7 @@ func buildGyazoUploadOptionWithInteractive() (gyazo.UploadOption, error) {
 		MetadataIsPublic: metadataIsPublic,
 		App:              app,
 		Desc:             desc,
+		EnableExif:       exif,
 	}, nil
 }
 

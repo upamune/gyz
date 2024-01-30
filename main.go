@@ -68,6 +68,9 @@ func setFlags() {
 
 	rootCmd.Flags().Bool("metadata-is-public", false, "metadata is public")
 	uploadCmd.Flags().Bool("metadata-is-public", false, "metadata is public")
+
+	rootCmd.Flags().Bool("exif", false, "using exif")
+	uploadCmd.Flags().Bool("exif", false, "using exif")
 }
 
 func init() {
