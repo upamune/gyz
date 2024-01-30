@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/evanoberholster/imagemeta"
+	"github.com/evanoberholster/imagemeta/exif2"
 	"golang.org/x/oauth2"
 )
 
@@ -46,6 +48,7 @@ func DefaultClient() *Client {
 type UploadOption struct {
 	AccessPolicy     string
 	MetadataIsPublic bool
+	EnableExif       bool
 	RefererURL       string
 	App              string
 	Title            string
@@ -71,7 +74,7 @@ type uploadResponse struct {
 	} `json:"ocr"`
 }
 
-func (option UploadOption) toMap() map[string]string {
+func (option UploadOption) toMap(exif *exif2.Exif) map[string]string {
 	m := make(map[string]string)
 	if option.AccessPolicy != "" {
 		m["access_policy"] = option.AccessPolicy
@@ -101,6 +104,21 @@ func (option UploadOption) toMap() map[string]string {
 	if option.CollectionID != "" {
 		m["collection_id"] = option.CollectionID
 	}
+
+	// NOTE: exif情報が有効な時だけ上書きする
+	if exif != nil {
+		if !exif.CreateDate().IsZero() {
+			d := exif.CreateDate()
+			sec := time.Date(d.Year(), d.Month(), d.Day(), d.Hour(), d.Minute(), d.Second(), d.Nanosecond(), time.Local).Unix()
+			m["created_at"] = fmt.Sprintf("%d", sec)
+		}
+		desc := m["desc"]
+		if desc == "" {
+			m["desc"] = exif.String()
+		} else {
+			m["desc"] = desc + "\n\n" + exif.String()
+		}
+	}
 	return m
 }
 
@@ -114,6 +132,21 @@ func (c *Client) Upload(filePath string, option UploadOption) (string, error) {
 	}
 	defer file.Close()
 
+	var exif *exif2.Exif
+	if option.EnableExif {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+		defer file.Close()
+
+		e, err := imagemeta.Decode(file)
+		if err != nil {
+			return "", errors.WithStack(err)
+		}
+		exif = &e
+	}
+
 	part, err := writer.CreateFormFile("imagedata", file.Name())
 	if err != nil {
 		return "", errors.WithStack(err)
@@ -122,7 +155,7 @@ func (c *Client) Upload(filePath string, option UploadOption) (string, error) {
 		return "", errors.WithStack(err)
 	}
 
-	for k, v := range option.toMap() {
+	for k, v := range option.toMap(exif) {
 		if err := writer.WriteField(k, v); err != nil {
 			return "", errors.WithStack(err)
 		}
